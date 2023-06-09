@@ -19,6 +19,10 @@ sam build && sam deploy --guided
 ```
 
 ## Testing the application
+The sample app has a synthetic medical discharge document which we will summarize. The document looks like:
+
+![discharge summary](dischargesummary.png)
+
 Take the source bucket name from the SAM output and run:
 
 ```bash
