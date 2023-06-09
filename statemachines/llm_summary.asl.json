@@ -1,0 +1,84 @@
+{
+  "Comment": "A state machine to process document and summarize using LLM.",
+  "StartAt": "AnalyzeDocument",
+  "States": {
+    "AnalyzeDocument": {
+      "Type": "Task",
+      "Parameters": {
+        "Document": {
+          "S3Object": {
+            "Bucket.$": "$.detail.bucket.name",
+            "Name.$": "$.detail.object.key"
+          }
+        },
+        "FeatureTypes": [
+          "TABLES",
+          "FORMS"
+        ]
+      },
+      "Resource": "arn:aws:states:::aws-sdk:textract:analyzeDocument",
+      "Next": "Text Transformer"
+    },
+    "Text Transformer": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${TextTransformerFunctionArn}",
+        "Payload.$": "$"
+      },
+      "ResultSelector": {
+        "extracted.$": "States.StringToJson($.Payload.body)"
+      },
+      "ResultPath": "$.results",
+      "OutputPath": "$.results",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Summarize with LLM"
+    },
+    "Summarize with LLM": {
+      "Type": "Task",
+      "InputPath": "$.extracted",
+      "Parameters": {
+        "Body": {
+          "text_inputs.$": "States.Format('Given the following text, summarize the text {}', $.text)", 
+          "max_length": 1000
+        },
+        "EndpointName": "${FoundationalModelEndpointName}",
+        "ContentType": "application/json"
+      },
+      "ResultSelector": {
+        "summary.$": "States.StringToJson($.Body)"
+      },
+      "ResultPath": "$.extracted.llm",
+      "Resource": "arn:aws:states:::aws-sdk:sagemakerruntime:invokeEndpoint",
+      "Next": "PutObject"
+    },
+    "PutObject": {
+      "Type": "Task",
+      "InputPath": "$.extracted",
+      "End": true,
+      "Parameters": {
+        "ContentType": "application/json",
+        "Body": {
+          "summary.$": "$.llm.summary.generated_texts",
+          "tables.$": "$.tables",
+          "forms.$": "$.forms"
+        },
+        "Bucket": "${DestinationBucketName}",
+        "Key.$": "States.Format('{}-summary.json', $$.Execution.Input.detail.object.key)"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:putObject"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "version": "0",
+  "id": "7bbbca7e-6001-ee31-f5a8-1163711de106",
+  "detail-type": "Object Created",
+  "source": "aws.s3",
+  "account": "123456",
+  "time": "2023-06-02T04:12:15Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:s3:::foobar"
+  ],
+  "detail": {
+    "version": "0",
+    "bucket": {
+      "name": "foobar"
+    },
+    "object": {
+      "key": "dischargesummary.png",
+      "size": 191628,
+      "etag": "d0390f0efce14d1b74a41512c06e885",
+      "sequencer": "0064796C1EBF092AE"
+    },
+    "request-id": "R0YCH4AT19KR2AW",
+    "requester": "123456",
+    "source-ip-address": "2.2.18.1",
+    "reason": "PutObject"
+  }
+}

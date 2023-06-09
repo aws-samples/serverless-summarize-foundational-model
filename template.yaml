@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM Template for qna-summary-idp
+
+Parameters:
+  FoundationalModelName:
+    Type: String
+    Default: jumpstart-dft-hf-text2text-flan-t5-xxl
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 512
+    Tracing: Active
+    
+Resources:
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}-sourcebucket"
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+
+  DestinationBucket:
+    Type: AWS::S3::Bucket
+
+  TextTransformerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: handlers/transformer
+      Handler: app.lambda_handler
+      Runtime: python3.10
+      Architectures:
+        - arm64
+
+  TextTransformerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${TextTransformerFunction}"
+      RetentionInDays: 5
+
+  RedactionReplacerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: handlers/redaction
+      Handler: app.lambda_handler
+      Runtime: python3.10
+      Architectures:
+        - arm64
+
+  RedactionReplacerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RedactionReplacerFunction}"
+      RetentionInDays: 5
+
+  SummarizeStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join [ "/", [ "stepfunctions", SummarizeStateMachine]]
+      RetentionInDays: 5
+
+  SummarizeStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SummarizeStateMachineLogGroup.Arn
+        IncludeExecutionData: true
+        Level: 'ALL'
+      DefinitionUri: statemachines/llm_summary.asl.json
+      DefinitionSubstitutions:
+        FoundationalModelEndpointName: !Ref FoundationalModelName
+        DestinationBucketName: !Ref DestinationBucket
+        TextTransformerFunctionArn: !GetAtt TextTransformerFunction.Arn
+        RedactionReplacerFunctionArn: !GetAtt RedactionReplacerFunction.Arn
+      Tracing:
+        Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TextTransformerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RedactionReplacerFunction
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: sagemaker:InvokeEndpoint
+              Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${FoundationalModelName}"
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: comprehend:DetectPiiEntities
+              Resource: "*"      
+        - Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action:
+                - "cloudwatch:*"
+                - "logs:*"
+              Resource: "*"
+        - S3ReadPolicy:
+            BucketName: !Ref SourceBucket
+        - S3CrudPolicy:
+            BucketName: !Ref DestinationBucket
+        - TextractDetectAnalyzePolicy: {}
+        - TextractGetResultPolicy: {}
+      Events:
+        DocumentUpload:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: default
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+              detail:
+                bucket:
+                  name:
+                    - !Ref SourceBucket
+
+Outputs:
+  SummarizeStepFunctions:
+    Description: Summarize Step Functions ARN
+    Value: !Ref SummarizeStateMachine
+  SourceBucketName:
+    Description: Name of the source bucket
+    Value: !Ref SourceBucket
+  DestinationBucketName:
+    Description: Name of the destination bucket
+    Value: !Ref DestinationBucket
