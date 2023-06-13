@@ -40,21 +40,6 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${TextTransformerFunction}"
       RetentionInDays: 5
 
-  RedactionReplacerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: handlers/redaction
-      Handler: app.lambda_handler
-      Runtime: python3.10
-      Architectures:
-        - arm64
-
-  RedactionReplacerFunctionLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${RedactionReplacerFunction}"
-      RetentionInDays: 5
-
   SummarizeStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -76,14 +61,11 @@ Resources:
         FoundationalModelEndpointName: !Ref FoundationalModelName
         DestinationBucketName: !Ref DestinationBucket
         TextTransformerFunctionArn: !GetAtt TextTransformerFunction.Arn
-        RedactionReplacerFunctionArn: !GetAtt RedactionReplacerFunction.Arn
       Tracing:
         Enabled: true
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref TextTransformerFunction
-        - LambdaInvokePolicy:
-            FunctionName: !Ref RedactionReplacerFunction
         - Version: 2012-10-17
           Statement:
             - Effect: Allow
@@ -92,15 +74,18 @@ Resources:
         - Version: 2012-10-17
           Statement:
             - Effect: Allow
-              Action: comprehend:DetectPiiEntities
-              Resource: "*"      
-        - Version: 2012-10-17
-          Statement:
-            - Effect: Allow
               Action:
-                - "cloudwatch:*"
-                - "logs:*"
-              Resource: "*"
+                - logs:CreateLogDelivery
+                - logs:CreateLogStream
+                - logs:DeleteLogDelivery
+                - logs:DescribeLogGroups
+                - logs:DescribeResourcePolicies
+                - logs:GetLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutLogEvents
+                - logs:PutResourcePolicy
+                - logs:UpdateLogDelivery
+              Resource: '*'
         - S3ReadPolicy:
             BucketName: !Ref SourceBucket
         - S3CrudPolicy:
