@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 import json
 import trp
 from textractprettyprinter.t_pretty_print import convert_table_to_list, Pretty_Print_Table_Format, Textract_Pretty_Print, get_string

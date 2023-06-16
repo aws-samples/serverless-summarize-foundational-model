@@ -43,7 +43,7 @@ Resources:
   SummarizeStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Join [ "/", [ "stepfunctions", SummarizeStateMachine]]
+      LogGroupName: !Sub "/stepfunctions/${SummarizeStateMachine}"
       RetentionInDays: 5
 
   SummarizeStateMachine:
