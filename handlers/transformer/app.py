@@ -17,15 +17,15 @@ def collect_text(event):
 
 def collect_tables(extracted):
     '''
-    Write code to extract tables from textract output
+    Extract tables and forms from textract output
     '''
 
-    kv_list = get_string(
-        textract_json=extracted,
-        table_format=Pretty_Print_Table_Format.csv,
-        output_type=[Textract_Pretty_Print.FORMS]
-    )
-    print(kv_list)
+    # kv_list = get_string(
+    #     textract_json=extracted,
+    #     table_format=Pretty_Print_Table_Format.csv,
+    #     output_type=[Textract_Pretty_Print.FORMS]
+    # )
+    # print(kv_list)
 
     dfs = []
     doc = trp.Document(extracted)
@@ -37,8 +37,6 @@ def collect_tables(extracted):
     return [{'key':a[0], 'value': a[1]} for a in dfs]
 
 def lambda_handler(event, context):
-    # print(json.dumps(event))
-
     text = collect_text(event)
     tables = collect_tables(event)
 
