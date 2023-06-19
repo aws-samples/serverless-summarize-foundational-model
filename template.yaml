@@ -3,8 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: Sample SAM Template for qna-summary-idp
 
 Parameters:
-  FoundationalModelName:
+  FoundationModelName:
     Type: String
+    Description: Provide the name of the foundation model that will be used in the SageMaker invoke endpoint. Default used here is a flan-t5 Hugging face model.
     Default: jumpstart-dft-hf-text2text-flan-t5-xxl
 
 Globals:
@@ -18,12 +19,23 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}-sourcebucket"
+      PublicAccessBlockConfiguration:        
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+        RestrictPublicBuckets: TRUE
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
 
   DestinationBucket:
     Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+        RestrictPublicBuckets: TRUE
 
   TextTransformerFunction:
     Type: AWS::Serverless::Function
@@ -58,7 +70,7 @@ Resources:
         Level: 'ALL'
       DefinitionUri: statemachines/llm_summary.asl.json
       DefinitionSubstitutions:
-        FoundationalModelEndpointName: !Ref FoundationalModelName
+        FoundationalModelEndpointName: !Ref FoundationModelName
         DestinationBucketName: !Ref DestinationBucket
         TextTransformerFunctionArn: !GetAtt TextTransformerFunction.Arn
       Tracing:
@@ -70,7 +82,7 @@ Resources:
           Statement:
             - Effect: Allow
               Action: sagemaker:InvokeEndpoint
-              Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${FoundationalModelName}"
+              Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${FoundationModelName}"
         - Version: 2012-10-17
           Statement:
             - Effect: Allow
