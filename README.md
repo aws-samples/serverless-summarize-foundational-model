@@ -1,5 +1,5 @@
 ## Summarize with Foundational Model using Serverless
-
+This sample application is part of an AWS Machine Learning blog on [Intelligent Document Processing using GenAI](https://aws.amazon.com/blogs/machine-learning/enhancing-aws-intelligent-document-processing-with-generative-ai).
 
 ## Architecture
 ![Architecture](architecture.png)
